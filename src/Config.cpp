@@ -7,6 +7,13 @@
 
 using json = nlohmann::json;
 
+namespace {
+// `processes` is only meaningful for matching_mode == "mpi", and older
+// config.json files on disk won't have it at all -- default to 4 rather
+// than throwing, so load() keeps working unchanged for serial/parallel.
+constexpr int kDefaultProcesses = 4;
+}
+
 Config Config::load(const std::string& filename) {
 
     std::ifstream file(filename);
@@ -34,6 +41,9 @@ Config Config::load(const std::string& filename) {
 
     config.threads =
         data.at("threads").get<int>();
+
+    config.processes =
+        data.value("processes", kDefaultProcesses);
 
     if (config.drivers <= 0) {
         throw std::runtime_error(
@@ -67,13 +77,43 @@ Config Config::load(const std::string& filename) {
         );
     }
 
+    if (config.processes <= 0) {
+        throw std::runtime_error(
+            "processes must be greater than 0"
+        );
+    }
+
     if (config.matchingMode != "serial" &&
-        config.matchingMode != "parallel") {
+        config.matchingMode != "parallel" &&
+        config.matchingMode != "mpi") {
 
         throw std::runtime_error(
-            "matching_mode must be 'serial' or 'parallel'"
+            "matching_mode must be 'serial', 'parallel', or 'mpi'"
         );
     }
 
     return config;
+}
+
+void Config::save(const std::string& filename, const Config& config) {
+
+    json data;
+
+    data["drivers"]             = config.drivers;
+    data["riders"]              = config.riders;
+    data["ticks"]                = config.ticks;
+    data["request_probability"] = config.requestProbability;
+    data["matching_mode"]       = config.matchingMode;
+    data["threads"]             = config.threads;
+    data["processes"]           = config.processes;
+
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        throw std::runtime_error(
+            "Could not open configuration file for writing: " + filename
+        );
+    }
+
+    file << data.dump(4) << '\n';
 }
