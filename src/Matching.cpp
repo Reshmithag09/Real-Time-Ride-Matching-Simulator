@@ -16,7 +16,7 @@ int MatchingEngine::findNearestDriver(
 
     int nearestDriverIndex = -1;
 
-    // We compare squared distances, so sqrt() is avoided
+    // compared squared distances, so sqrt() is avoided
     // during the driver search.
     double minimumDistanceSquared =
         std::numeric_limits<double>::max();
